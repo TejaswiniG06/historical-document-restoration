@@ -219,6 +219,122 @@ function SectionLabel({ children }) {
   );
 }
 
+/* ──────────────────────── PIPELINE PROGRESS ────────────────────────────── */
+const PIPELINE_STAGES = [
+  { key: "analyze",   label: "Scanning document",         detail: "Detecting blur, noise, contrast, stains…" },
+  { key: "profile",   label: "Building damage profile",   detail: "Scoring each degradation dimension…" },
+  { key: "denoise",   label: "Noise Removal",             detail: "Applying adaptive denoising filter…" },
+  { key: "contrast",  label: "Contrast Enhancement",      detail: "Stretching histogram, boosting clarity…" },
+  { key: "deblur",    label: "Deblurring",                detail: "Sharpening degraded regions…" },
+  { key: "stain",     label: "Stain Removal",             detail: "Masking and inpainting stained areas…" },
+  { key: "morph",     label: "Morphological Repair",      detail: "Reconnecting broken text strokes…" },
+  { key: "inpaint",   label: "Inpainting",                detail: "Filling damaged regions with context…" },
+  { key: "ocr",       label: "OCR Extraction",            detail: "Binarizing and running Tesseract…" },
+];
+
+function PipelineProgress() {
+  const [activeIdx, setActiveIdx] = useState(0);
+  const [doneIdx, setDoneIdx] = useState(-1);
+
+  useState(() => {
+    let i = 0;
+    const tick = () => {
+      if (i >= PIPELINE_STAGES.length) return;
+      setActiveIdx(i);
+      const t = setTimeout(() => {
+        setDoneIdx(i);
+        i++;
+        setTimeout(tick, 180);
+      }, 900 + Math.random() * 600);
+      return t;
+    };
+    const t = setTimeout(tick, 200);
+    return () => clearTimeout(t);
+  }, []);
+
+  return (
+    <div style={{ padding: "2rem 0", animation: "fadeIn 0.3s ease" }}>
+      <div style={{ fontSize: 10, fontFamily: "var(--font-mono)", color: "var(--amber)", letterSpacing: "0.2em", marginBottom: 20 }}>
+        RUNNING ADAPTIVE PIPELINE
+      </div>
+
+      {/* progress bar */}
+      <div style={{ height: 2, background: "var(--border)", borderRadius: 1, overflow: "hidden", marginBottom: 24, position: "relative" }}>
+        <div style={{
+          position: "absolute", top: 0, left: 0, height: "100%",
+          width: `${((doneIdx + 1) / PIPELINE_STAGES.length) * 100}%`,
+          background: "linear-gradient(90deg, var(--amber), var(--cyan))",
+          transition: "width 0.5s ease",
+        }} />
+        <div style={{
+          position: "absolute", top: 0, left: 0, height: "100%", width: "25%",
+          background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent)",
+          animation: "slide-right 1.2s ease infinite",
+        }} />
+      </div>
+
+      {/* steps list */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+        {PIPELINE_STAGES.map((s, i) => {
+          const done   = i <= doneIdx;
+          const active = i === activeIdx && i > doneIdx;
+          const pending = i > activeIdx;
+          return (
+            <div key={s.key} style={{
+              display: "flex", alignItems: "flex-start", gap: 14,
+              padding: "9px 0",
+              borderBottom: i < PIPELINE_STAGES.length - 1 ? "1px solid var(--border)" : "none",
+              opacity: pending ? 0.3 : 1,
+              transition: "opacity 0.3s ease",
+            }}>
+              {/* icon */}
+              <div style={{
+                width: 20, height: 20, borderRadius: "50%", flexShrink: 0, marginTop: 1,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                background: done ? "var(--green-dim)" : active ? "var(--amber-glow)" : "var(--bg3)",
+                border: `1.5px solid ${done ? "var(--green)" : active ? "var(--amber)" : "var(--border2)"}`,
+                boxShadow: active ? "0 0 10px var(--amber-glow)" : "none",
+                transition: "all 0.3s ease",
+              }}>
+                {done ? (
+                  <svg width="10" height="10" viewBox="0 0 10 10"><path d="M2 5l2.5 2.5L8 3" stroke="var(--green)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/></svg>
+                ) : active ? (
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--amber)", display: "block", animation: "spin 1s linear infinite", border: "1.5px solid transparent", borderTopColor: "var(--amber)" }} />
+                ) : (
+                  <span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--border2)", display: "block" }} />
+                )}
+              </div>
+
+              {/* text */}
+              <div style={{ flex: 1 }}>
+                <div style={{
+                  fontSize: 12, fontFamily: "var(--font-mono)",
+                  color: done ? "var(--green)" : active ? "var(--amber)" : "var(--text3)",
+                  fontWeight: active ? 700 : 400,
+                  transition: "color 0.3s ease",
+                  letterSpacing: "0.04em",
+                }}>
+                  {s.label}
+                </div>
+                {(active || done) && (
+                  <div style={{ fontSize: 10, color: "var(--text3)", fontFamily: "var(--font-mono)", marginTop: 2 }}>
+                    {done ? "complete" : s.detail}
+                  </div>
+                )}
+              </div>
+
+              {/* timestamp feel */}
+              {done && (
+                <div style={{ fontSize: 9, fontFamily: "var(--font-mono)", color: "var(--text3)", paddingTop: 2 }}>✓</div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 /* ────────────────────────────── MAIN APP ───────────────────────────────── */
 export default function App() {
   const [dragOver, setDragOver] = useState(false);
@@ -294,14 +410,9 @@ export default function App() {
             <circle cx="16" cy="14.5" r="1.2" fill="var(--cyan)"/>
           </svg>
           <span style={{ fontFamily: "var(--font-head)", fontWeight: 800, fontSize: 14, color: "var(--text)", letterSpacing: "0.06em" }}>
-            ARCHIVUM
+            HISTORICAL DOCUMENT RESTORATION
           </span>
         </div>
-
-        <div style={{ width: 1, height: 20, background: "var(--border)" }} />
-        <span style={{ fontSize: 10, fontFamily: "var(--font-mono)", color: "var(--text3)", letterSpacing: "0.1em" }}>
-          DOCUMENT RESTORATION PIPELINE
-        </span>
 
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 7 }}>
           <div style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--green)", boxShadow: "0 0 8px var(--green)" }} />
@@ -444,7 +555,7 @@ export default function App() {
                 }} />
                 Restoring document…
               </span>
-            ) : "⬡  Run Restoration Pipeline"}
+            ) : "⬡  Restore Document"}
           </button>
 
           {/* ── ERROR ── */}
@@ -465,23 +576,7 @@ export default function App() {
           )}
 
           {/* ── LOADING STATE ── */}
-          {loading && (
-            <div style={{ textAlign: "center", padding: "3rem 1rem", animation: "fadeIn 0.3s ease" }}>
-              <div style={{ fontSize: 10, fontFamily: "var(--font-mono)", color: "var(--amber)", letterSpacing: "0.2em", marginBottom: 14 }}>
-                RUNNING ADAPTIVE PIPELINE
-              </div>
-              <div style={{ height: 2, background: "var(--border)", borderRadius: 1, overflow: "hidden", maxWidth: 320, margin: "0 auto 14px", position: "relative" }}>
-                <div style={{
-                  position: "absolute", top: 0, left: 0, height: "100%", width: "33%",
-                  background: "linear-gradient(90deg, transparent, var(--amber), var(--cyan), transparent)",
-                  animation: "slide-right 1.4s ease infinite",
-                }} />
-              </div>
-              <div style={{ fontSize: 10, fontFamily: "var(--font-mono)", color: "var(--text3)", letterSpacing: "0.08em" }}>
-                ANALYZING → PROFILING → APPLYING FILTERS → EXTRACTING TEXT
-              </div>
-            </div>
-          )}
+          {loading && <PipelineProgress />}
 
           {/* ── RESULTS ── */}
           {result && (
@@ -645,17 +740,6 @@ export default function App() {
 
             </div>
           )}
-
-          {/* ── FOOTER ── */}
-          <div style={{
-            marginTop: "4rem", paddingTop: "1.5rem",
-            borderTop: "1px solid var(--border)",
-            display: "flex", justifyContent: "space-between", alignItems: "center",
-            flexWrap: "wrap", gap: 8,
-          }}>
-            <span style={{ fontSize: 9, fontFamily: "var(--font-mono)", color: "var(--text3)", letterSpacing: "0.1em" }}>ARCHIVUM · RESTORATION ENGINE</span>
-            <span style={{ fontSize: 9, fontFamily: "var(--font-mono)", color: "var(--text3)", letterSpacing: "0.1em" }}>FASTAPI · OPENCV · TESSERACT · OCR</span>
-          </div>
 
         </div>
       </div>
